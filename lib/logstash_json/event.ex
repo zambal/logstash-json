@@ -95,6 +95,7 @@ defmodule LogstashJson.Event do
 
   # traverse data and stringify special Elixir/Erlang terms
   defp pre_encode(it) when is_pid(it), do: inspect(it)
+  defp pre_encode(it) when is_function(it), do: inspect(it)
   defp pre_encode(it) when is_list(it), do: Enum.map(it, &pre_encode/1)
   defp pre_encode(it) when is_tuple(it), do: pre_encode(Tuple.to_list(it))
 
@@ -107,9 +108,11 @@ defmodule LogstashJson.Event do
     end
   end
 
-  defp pre_encode(it) when is_map(it),
-    do: Enum.into(it, %{}, fn {k, v} -> {pre_encode(k), pre_encode(v)} end)
-
+  defp pre_encode(it) when is_map(it) do
+    it
+    |> Enum.filter(fn {k, _} when k == :mfa -> false; _ -> true end)
+    |> Enum.into(%{}, fn {k, v} -> {pre_encode(k), pre_encode(v)} end)
+  end
   defp pre_encode(it) when is_binary(it) do
     it
     |> String.valid?()
